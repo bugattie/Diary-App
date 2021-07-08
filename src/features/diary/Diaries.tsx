@@ -4,20 +4,16 @@ import { RootState } from "../../rootReducer";
 import http from "../../services/api";
 import { Diary } from "../../interfaces/diary.interface";
 import { addDiary } from "./diariesSlice";
-// import Swal from "sweetalert2";
+import Swal from "sweetalert2";
 import { setUser } from "../auth/userSlice";
 import DiaryTile from "./DiaryTile";
 import { User } from "../../interfaces/user.interface";
-import { Routes, Route } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import DiaryEntriesList from "./DiaryEntriesList";
 import { useAppDispatch } from "../../store";
 import dayjs from "dayjs";
-import Swal from "sweetalert2";
-import withReactContent from "sweetalert2-react-content";
 
-const MySwal = withReactContent(Swal);
-
-const Diaries = () => {
+const Diaries: FC = () => {
   const dispatch = useAppDispatch();
   const diaries = useSelector((state: RootState) => state.diaries);
   const user = useSelector((state: RootState) => state.user);
@@ -35,12 +31,11 @@ const Diaries = () => {
         });
       }
     };
-
     fetchDiaries();
   }, [dispatch, user]);
 
   const createDiary = async () => {
-    const result = await Swal.mixin({
+    const result: any = await Swal.mixin({
       input: "text",
       confirmButtonText: "Next →",
       showCancelButton: true,
@@ -60,17 +55,42 @@ const Diaries = () => {
         inputValue: "private",
       },
     ]);
+    if (result.value) {
+      const { value } = result;
+      const { diary, user: _user } = await http.post<
+        Partial<Diary>,
+        { diary: Diary; user: User }
+      >("/diaries/", {
+        title: value[0],
+        type: value[1],
+        userId: user?.id,
+      });
+      if (diary && user) {
+        dispatch(addDiary([diary] as Diary[]));
+        dispatch(addDiary([diary] as Diary[]));
+        dispatch(setUser(_user));
+        return Swal.fire({
+          titleText: "All done!",
+          confirmButtonText: "OK!",
+        });
+      }
+    }
+    Swal.fire({
+      titleText: "Cancelled",
+    });
   };
 
   return (
-    <div>
+    <div style={{ padding: "1em 0.4em" }} className="create-dairy">
       <Routes>
-        <Route path="/">
-          <button onClick={createDiary}>Create New</button>
-          {}
-        </Route>
         <Route path="/diary/:id">
           <DiaryEntriesList />
+        </Route>
+        <Route path="/">
+          <button onClick={createDiary}>Create New</button>
+          {diaries.map((diary, idx) => (
+            <DiaryTile key={idx} diary={diary} />
+          ))}
         </Route>
       </Routes>
     </div>
